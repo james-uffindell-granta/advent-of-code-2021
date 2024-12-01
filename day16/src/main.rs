@@ -1,5 +1,3 @@
-use core::num;
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Bit {
     Zero,
@@ -148,6 +146,13 @@ pub fn parse_literal(input: &mut Vec<Bit>) -> u64 {
     to_number(&bits)
 }
 
+fn main() {
+    let input = include_str!("../input.txt");
+    let packet = parse_input(input);
+    println!("Part 1: {}", packet.total_version());
+    println!("Part 2: {}", packet.evaluate());
+}
+
 #[test]
 pub fn test_to_number() {
     assert_eq!(to_number(&[Bit::One, Bit::Zero, Bit::Zero]), 4);
@@ -190,11 +195,4 @@ pub fn test() {
     assert_eq!(parse_input("F600BC2D8F").evaluate(), 0);
     assert_eq!(parse_input("9C005AC2F8F0").evaluate(), 0);
     assert_eq!(parse_input("9C0141080250320F1802104A08").evaluate(), 1);
-}
-
-fn main() {
-    let input = include_str!("../input.txt");
-    let packet = parse_input(input);
-    println!("Part 1: {}", packet.total_version());
-    println!("Part 2: {}", packet.evaluate());
 }
