@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet, BTreeMap};
+use std::{cmp::Reverse, collections::{BTreeMap, BinaryHeap, HashMap, HashSet}};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Coord {
     x: i64,
     y: i64
@@ -56,21 +56,24 @@ impl Cavern {
     pub fn lowest_risks(&self) -> HashMap<Coord, u32> {
         let mut risks = HashMap::new();
         let mut unvisited = self.cells.keys().copied().collect::<HashSet<_>>();
-
-        // map from lowest known risk so far to coords that satisfy
-        let mut next_to_examine: BTreeMap<u32, HashSet<Coord>> = BTreeMap::new();
-
         // map from coordinate to lowest known risk so far
         let mut lowest_risks = HashMap::<Coord, _>::new();
         let start: Coord = (0, 0).into();
 
+        let mut frontier = BinaryHeap::new();
+        frontier.push(Reverse((0, start)));
+
         // distance to the start is 0
         lowest_risks.insert(start, 0);
 
-        let mut next_node_to_consider = Some((start, 0));
+        while let Some((distance, cell)) = frontier.pop().map(|Reverse(n)| n) {
+            if risks.contains_key(&cell) {
+                // already did this one
+                continue;
+            }
 
-        while let Some((cell, distance)) = next_node_to_consider {
             let neighbours = cell.neighbours();
+
             let unvisited_neighbours = neighbours.intersection(&unvisited);
             for neighbour in unvisited_neighbours {
                 let distance_to_neighbour_this_way = distance + self.cells.get(neighbour).unwrap().0;
@@ -78,8 +81,7 @@ impl Cavern {
                     Some(existing_distance) => {
                         if existing_distance > &distance_to_neighbour_this_way {
                             let minimum_distance = existing_distance.min(&distance_to_neighbour_this_way);
-                            next_to_examine.entry(*existing_distance).and_modify(|set| _ = set.remove(neighbour));
-                            next_to_examine.entry(*minimum_distance).or_default().insert(*neighbour);
+                            frontier.push(Reverse((*minimum_distance, *neighbour)));
                             lowest_risks.insert(*neighbour, *minimum_distance);
                         }
                         // otherwise the existing minimum distance is still the min
@@ -87,29 +89,14 @@ impl Cavern {
                     },
                     None => {
                         lowest_risks.insert(*neighbour, distance_to_neighbour_this_way);
-                        next_to_examine.entry(distance_to_neighbour_this_way).or_default().insert(*neighbour);
+                        frontier.push(Reverse((distance_to_neighbour_this_way, *neighbour)));
+
                     }
                 }
             }
 
             unvisited.remove(&cell);
-            match next_to_examine.entry(distance) {
-                std::collections::btree_map::Entry::Occupied(mut o) => {
-                    o.get_mut().remove(&cell);
-                    if o.get().is_empty() {
-                        o.remove();
-                    }
-                },
-                std::collections::btree_map::Entry::Vacant(_) => {
-                    // nothing - might be first time through
-                }
-            }
-
             risks.insert(cell, distance);
-
-            next_node_to_consider = next_to_examine.first_entry().map(|e| {
-                (*e.get().iter().next().unwrap(), *e.key())
-            });
         }
 
         risks
